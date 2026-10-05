@@ -7,6 +7,10 @@ demonstrations, built on the real `openlfcp/sdk-ts` packages.
 | --- | --- |
 | [`todo-cli`](todo-cli/README.md) | `lfcp-todo`, a headless Todo client: Shared Objects Tasks as encrypted, signed LFCP Data Units, local persistence, sync and invitations against an LFCP server (LFCP-039) |
 
+Demo: [docs/demos/headless-todo.md](docs/demos/headless-todo.md). One
+command runs a two-person storyline against the reference server, prints the
+transcript and checks the outcome.
+
 > MVP reference software: not for data you need to protect.
 
 ## Scope
