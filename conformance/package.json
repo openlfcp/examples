@@ -1,0 +1,17 @@
+{
+  "name": "@openlfcp-examples/conformance",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Cross-language conformance of sdk-ts and sdk-rs (LFCP-070): fixture exchange over protocol bytes and the compatibility matrix.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@openlfcp/core": "link:../../sdk-ts/packages/core",
+    "@openlfcp/crypto": "link:../../sdk-ts/packages/crypto",
+    "@openlfcp/shared-objects": "link:../../sdk-ts/packages/shared-objects",
+    "@openlfcp/wire": "link:../../sdk-ts/packages/wire"
+  }
+}

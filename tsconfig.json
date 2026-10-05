@@ -4,6 +4,9 @@
   "references": [
     {
       "path": "todo-cli"
+    },
+    {
+      "path": "conformance"
     }
   ]
 }

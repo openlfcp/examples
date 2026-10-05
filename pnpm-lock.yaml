@@ -21,6 +21,21 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(@types/node@24.19.1)(vite@8.3.2(@types/node@24.19.1))
 
+  conformance:
+    dependencies:
+      '@openlfcp/core':
+        specifier: link:../../sdk-ts/packages/core
+        version: link:../../sdk-ts/packages/core
+      '@openlfcp/crypto':
+        specifier: link:../../sdk-ts/packages/crypto
+        version: link:../../sdk-ts/packages/crypto
+      '@openlfcp/shared-objects':
+        specifier: link:../../sdk-ts/packages/shared-objects
+        version: link:../../sdk-ts/packages/shared-objects
+      '@openlfcp/wire':
+        specifier: link:../../sdk-ts/packages/wire
+        version: link:../../sdk-ts/packages/wire
+
   todo-cli:
     dependencies:
       '@openlfcp/client':

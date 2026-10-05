@@ -1,0 +1,4 @@
+{
+  "description": "Known failures of the cross-language run, each with the bug that causes it. The run fails on any other FAIL, and on an entry here that passes (remove it then).",
+  "failures": []
+}
