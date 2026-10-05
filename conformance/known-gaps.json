@@ -1,0 +1,10 @@
+{
+  "description": "Known coverage gaps of the cross-language run, accepted by the orchestrator. The matrix lists them; rows marked N/A must each have an entry under rows.",
+  "rows": {
+    "shared_objects.negative.state_problems": "Only the Rust adapter produces this negative: it writes profile-invalid changes with raw Automerge, while the TypeScript adapter writes through the profile API, which refuses them. Both consumers check the Rust-produced case."
+  },
+  "general": [
+    "Mode A counts per suite come from sdk-ts only. sdk-rs reports one count over its whole `cargo test --all-features` run, which includes both vector suites, the Automerge corpus and the schema fixtures.",
+    "The G-EP7 cross-check (rebuilding the state without a unit that a later Key Epoch Record places beyond its cutoff) is deferred: the run does not compare the two SDKs on it."
+  ]
+}

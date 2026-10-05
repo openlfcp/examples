@@ -45,7 +45,11 @@ With `sdk-rs/`, `sdk-ts/` (built) and `spec/` next to `examples/`:
 pnpm build
 node conformance/dist/run.js            # report in conformance/report/
 node conformance/dist/run.js --strict   # also: the SDKs are the commits in pins.json (CI)
+node conformance/dist/run.js --strict --write-matrix ../.github/docs/conformance/compatibility-matrix.md
 ```
+
+`--write-matrix <path>` also writes the matrix to `<path>`. That is how the
+published snapshot in `.github` is made; never edit it by hand.
 
 The run writes:
 
@@ -59,6 +63,11 @@ It exits non-zero on any of:
   names its bug;
 - a listed entry that now passes (remove it);
 - vector failures;
-- differing spec pins, or a stale LFCP-WIRE-01.1 pin.
+- differing spec pins, or a stale LFCP-WIRE-01.1 pin;
+- a row that is N/A in some direction but has no entry in
+  `known-gaps.json`.
+
+`known-gaps.json` explains each N/A row and lists the run's other accepted
+coverage gaps. The matrix prints them under "Known gaps".
 
 `pins.json` fixes the SDK commits and spec baseline of a release run.

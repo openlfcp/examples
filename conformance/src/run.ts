@@ -1,13 +1,14 @@
 // The cross-language conformance run (LFCP-070).
 //
-//   node dist/run.js [--out <dir>] [--skip-vectors]
+//   node dist/run.js [--out <dir>] [--skip-vectors] [--strict] [--write-matrix <path>]
 //
 // For every producer (Rust, TypeScript) and consumer (Rust, TypeScript),
 // the producer writes a bundle of fresh protocol objects to a temporary
 // directory and the consumer checks it: the exchange is protocol bytes in
 // files, across processes. The run also reads both SDKs' official vector
 // results (mode A). It writes report.json (machine-readable) and
-// COMPATIBILITY.md (the matrix) and exits non-zero when any check fails
+// COMPATIBILITY.md (the matrix; --write-matrix also writes it to <path>, the
+// published snapshot) and exits non-zero when any check fails
 // that is not a tracked expected failure, or when a tracked expected
 // failure passes (so it gets removed).
 //
@@ -31,6 +32,10 @@ const OUT = resolve(
 const SKIP_VECTORS = args.includes("--skip-vectors");
 // --strict (CI): the SDK checkouts must be the commits in pins.json.
 const STRICT = args.includes("--strict");
+// --write-matrix <path>: also write the matrix there (the published snapshot).
+const WRITE_MATRIX = args.includes("--write-matrix")
+  ? resolve(args[args.indexOf("--write-matrix") + 1] as string)
+  : undefined;
 
 type Side = "rust" | "ts";
 type Result = "PASS" | "FAIL" | "NOT_APPLICABLE";
@@ -75,6 +80,9 @@ const adapter: Record<Side, (command: "produce" | "consume", dir: string) => voi
 const expected: Expected[] = JSON.parse(
   readFileSync(join(pkg, "expected-failures.json"), "utf8"),
 ).failures;
+const gaps: { rows: Record<string, string>; general: string[] } = JSON.parse(
+  readFileSync(join(pkg, "known-gaps.json"), "utf8"),
+);
 const isExpected = (id: string, producer: Side, consumer: Side) =>
   expected.find((e) => e.id === id && e.producer === producer && e.consumer === consumer);
 
@@ -169,6 +177,14 @@ for (const r of runs)
         `${r.producer}→${r.consumer} ${c.id} now passes: remove it from expected-failures.json`,
       );
   }
+for (const r of rows)
+  if (
+    [r.rust_to_ts, r.ts_to_rust, r.rust_to_rust, r.ts_to_ts].some(
+      (c) => c.result === "NOT_APPLICABLE",
+    ) &&
+    gaps.rows[r.id] === undefined
+  )
+    problems.push(`${r.id} is N/A in some direction: explain it in known-gaps.json`);
 for (const v of vectors)
   if (v.passed !== v.total) problems.push(`${v.sdk} vectors: ${v.passed}/${v.total}`);
 
@@ -220,7 +236,11 @@ const lines = [
   "# OpenLFCP compatibility matrix",
   "",
   `Generated ${report.generated} by examples/conformance (LFCP-070).`,
-  `sdk-rs ${report.pins.sdk_rs.slice(0, 7)}, sdk-ts ${report.pins.sdk_ts.slice(0, 7)}, spec ${report.pins.spec.tag} (${report.pins.spec.commit.slice(0, 7)}).`,
+  "",
+  `- Spec baseline: ${report.pins.spec.tag} (spec ${report.pins.spec.commit}).`,
+  `- sdk-rs: ${report.pins.sdk_rs}.`,
+  `- sdk-ts: ${report.pins.sdk_ts}.`,
+  `- pins.json: sdk-rs ${pins.sdk_rs.slice(0, 7)}, sdk-ts ${pins.sdk_ts.slice(0, 7)}, spec ${pins.spec.slice(0, 7)}${STRICT ? " (strict run: the SDKs are these commits)" : ""}.`,
   "",
   "## A. Official vectors (byte-exact where the vectors fix every input)",
   "",
@@ -244,12 +264,21 @@ const lines = [
       `| ${r.id} | ${r.category} | ${mark(r.rust_to_ts)} | ${mark(r.ts_to_rust)} | ${mark(r.rust_to_rust)} | ${mark(r.ts_to_ts)} |`,
   ),
   "",
+  "## Known gaps",
+  "",
+  ...Object.entries(gaps.rows).map(([id, why]) => `- \`${id}\` (N/A in some directions): ${why}`),
+  ...gaps.general.map((g) => `- ${g}`),
+  "",
   problems.length === 0
     ? "No blocking problems."
     : `## Blocking problems\n\n${problems.map((p) => `- ${p}`).join("\n")}`,
   "",
 ];
 writeFileSync(join(OUT, "COMPATIBILITY.md"), lines.join("\n"));
+if (WRITE_MATRIX !== undefined) {
+  mkdirSync(dirname(WRITE_MATRIX), { recursive: true });
+  writeFileSync(WRITE_MATRIX, lines.join("\n"));
+}
 process.stdout.write(
   `report: ${join(OUT, "report.json")}\n${problems.length} blocking problem(s)\n`,
 );
