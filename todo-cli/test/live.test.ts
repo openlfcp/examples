@@ -9,6 +9,8 @@
 //    concurrent titles show as a CONFLICT in `task list` on both sides.
 // 4. B completes the Task; after syncing, A sees it done.
 // 5. B watches live while A adds a Task, and prints the change.
+// 6. LFCP-056, CLI driver: no Task title or status and no private local
+//    Resource name occurs in any server file (database, WAL, SHM) or log.
 //
 // Uses the sdk-ts interop harness (shared cargo target); skipped, saying
 // why, when cargo or the server checkout is missing.
@@ -22,6 +24,17 @@ import {
   startRustServer,
 } from "../../../sdk-ts/conformance/interop/rust-server.mjs";
 import { run } from "../src/commands.js";
+
+const NAME_A = "A's private list name 056";
+const NAME_B = "B's private list name 056";
+const STATUS = "x/com.example.cli056/private-status";
+const TITLES = [
+  "Prepare API contract",
+  "API contract v2 (A)",
+  "API contract v2 (B)",
+  "API contract v2",
+  "Live push",
+];
 
 let server: RunningRustServer | undefined;
 let skip: string | undefined;
@@ -73,7 +86,7 @@ describe("lfcp-todo ↔ Rust reference server (live)", () => {
     const b = cli("b");
     try {
       await a.run("principal", "create");
-      await a.run("resource", "create", "Demo", "--endpoint", url);
+      await a.run("resource", "create", NAME_A, "--endpoint", url);
       await a.run("resource", "host");
       const [added] = await a.run("task", "add", "Prepare API contract");
       const id = (added as string).replace("added ", "");
@@ -86,7 +99,7 @@ describe("lfcp-todo ↔ Rust reference server (live)", () => {
       expect(a.lines.err.some((l) => l.includes("SECRET"))).toBe(true);
 
       await b.run("principal", "create");
-      const joined = await b.run("invite", "accept", link, "--name", "Demo (B)");
+      const joined = await b.run("invite", "accept", link, "--name", NAME_B);
       expect(joined[0]).toMatch(/^joined /);
       expect((await b.run("task", "list")).join("\n")).toContain(
         `${id}  [todo]  Prepare API contract`,
@@ -129,8 +142,29 @@ describe("lfcp-todo ↔ Rust reference server (live)", () => {
         ),
       ).toBe(true);
 
-      // Secrets never reach the server log or any CLI output except the one link line.
+      // LFCP-056 (CLI driver): the server holds no Task plaintext and no private local name.
+      await a.run("task", "status", id.slice(0, 13), STATUS);
+      await a.run("sync");
+      await b.run("sync");
+      expect((await b.run("task", "list")).join("\n")).toContain(`[${STATUS}]`);
+      const plaintext = [...TITLES, STATUS, NAME_A, NAME_B];
+      const files = server.files();
       const log = server.log();
+      const leaks = plaintext.flatMap((text) => [
+        ...files
+          .filter((f) => Buffer.from(f.bytes).includes(Buffer.from(text)))
+          .map((f) => `${text} in server file ${f.path}`),
+        ...(log.includes(text) ? [`${text} in the server log`] : []),
+      ]);
+      expect(leaks).toEqual([]);
+      // Positive control: metadata is not hidden; B's Principal ID is in the server's files.
+      const bId = Buffer.from(
+        JSON.parse(readFileSync(join(b.home, "config.json"), "utf8")).principal,
+        "hex",
+      );
+      expect(files.some((f) => Buffer.from(f.bytes).includes(bId))).toBe(true);
+
+      // Secrets never reach the server log or any CLI output except the one link line.
       const secret = link.slice(link.indexOf("#secret=") + 8);
       expect(log).not.toContain(secret);
       const printed = [...a.lines.out, ...a.lines.err, ...b.lines.out, ...b.lines.err];
