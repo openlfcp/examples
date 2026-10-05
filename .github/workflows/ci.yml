@@ -37,3 +37,58 @@ jobs:
       - run: pnpm typecheck
       # The live server test is skipped here (no server checkout).
       - run: pnpm test
+
+  # LFCP-070: the cross-language conformance run, release-blocking. The
+  # SDKs are checked out at the commits in conformance/pins.json and the
+  # spec at its tag; the run fails on any unexpected FAIL (see
+  # conformance/README.md).
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: examples
+      - id: pins
+        working-directory: examples
+        run: |
+          echo "sdk_rs=$(jq -er .sdk_rs conformance/pins.json)" >> "$GITHUB_OUTPUT"
+          echo "sdk_ts=$(jq -er .sdk_ts conformance/pins.json)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: openlfcp/sdk-ts
+          ref: ${{ steps.pins.outputs.sdk_ts }}
+          path: sdk-ts
+      - uses: actions/checkout@v4
+        with:
+          repository: openlfcp/sdk-rs
+          ref: ${{ steps.pins.outputs.sdk_rs }}
+          path: sdk-rs
+      - id: spec
+        run: echo "tag=$(jq -er .tag sdk-rs/spec.lock)" >> "$GITHUB_OUTPUT"
+      # Full history with tags: the SDK tests check the tag still resolves
+      # to the pinned commit.
+      - uses: actions/checkout@v4
+        with:
+          repository: openlfcp/spec
+          ref: refs/tags/${{ steps.spec.outputs.tag }}
+          path: spec
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: examples/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: dtolnay/rust-toolchain@stable
+      # sdk-ts's vector run writes the results the matrix reads (mode A).
+      - run: pnpm install --frozen-lockfile && pnpm build && pnpm test:conformance
+        working-directory: sdk-ts
+      - run: pnpm install --frozen-lockfile && pnpm build
+        working-directory: examples
+      - run: node conformance/dist/run.js --strict
+        working-directory: examples
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compatibility-report
+          path: examples/conformance/report/
