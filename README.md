@@ -1,21 +1,30 @@
 # openlfcp/examples
 
 Small, understandable LFCP protocol examples and interoperability
-demonstrations.
+demonstrations, built on the real `openlfcp/sdk-ts` packages.
 
-## Status
+| Example | What it shows |
+| --- | --- |
+| [`todo-cli`](todo-cli/README.md) | `lfcp-todo`, a headless Todo client: Shared Objects Tasks as encrypted, signed LFCP Data Units, local persistence, sync and invitations against an LFCP server (LFCP-039) |
 
-Repository scaffold only. No examples yet.
+> MVP reference software: not for data you need to protect.
 
 ## Build from a clean checkout
 
+The examples use the sdk-ts packages from a checkout next to this
+repository (`../sdk-ts`), which must be built first:
+
 ```sh
+(cd ../sdk-ts && pnpm install --frozen-lockfile && pnpm build)
 pnpm install --frozen-lockfile
-pnpm run build
+pnpm build
+pnpm lint
+pnpm typecheck
 pnpm test
 ```
 
-Requires Node.js 24 or later and pnpm 10.
+Requires Node.js 24 or later and pnpm 10. The live tests also need cargo and
+an `openlfcp/server` checkout at `../server`; without them they are skipped.
 
 ## License
 

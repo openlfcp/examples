@@ -11,13 +11,29 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: examples
+      # The examples consume the sdk-ts packages from ../sdk-ts (link:).
+      - uses: actions/checkout@v4
+        with:
+          repository: openlfcp/sdk-ts
+          path: sdk-ts
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: examples/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
+      - run: pnpm install --frozen-lockfile && pnpm build
+        working-directory: sdk-ts
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run build
+      - run: pnpm build
+      - run: pnpm lint
+      - run: pnpm typecheck
+      # The live server test is skipped here (no server checkout).
       - run: pnpm test
