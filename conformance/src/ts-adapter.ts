@@ -655,14 +655,14 @@ function produceSharedObjects(R: ResourceId, id: (n: Name) => PrincipalId): unkn
         kind: "change",
         plaintext: toHex(frameRaw(corrupt)),
         signer: "bob",
-        expect: "INVALID_CHANGE",
+        expect: "INVALID_AUTOMERGE_BYTES",
       },
       {
         name: "snapshot_change_chunk",
         kind: "snapshot",
         // [1, change]: the framing a Snapshot uses, around a change chunk.
         plaintext: toHex(frameChange(firstBob)),
-        expect: "INVALID_SNAPSHOT",
+        expect: "INVALID_AUTOMERGE_BYTES",
       },
     ],
   };
@@ -997,8 +997,7 @@ async function consumeSharedObjects(
             applyAll(p, [n]);
             got = "ACCEPTED";
           } catch (e) {
-            const diagnostic = (e as { diagnostic?: string }).diagnostic;
-            got = diagnostic ?? "INVALID_CHANGE";
+            got = (e as { diagnostic?: string }).diagnostic ?? String(e);
           }
           return ensure(got === n.expect, () => `got ${got}`);
         }
@@ -1006,8 +1005,8 @@ async function consumeSharedObjects(
           try {
             unframeSnapshot(fromHex(n.plaintext));
             got = "ACCEPTED";
-          } catch {
-            got = "INVALID_SNAPSHOT";
+          } catch (e) {
+            got = (e as { diagnostic?: string }).diagnostic ?? String(e);
           }
           return ensure(got === n.expect, () => `got ${got}`);
         case "state": {
