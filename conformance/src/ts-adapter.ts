@@ -599,6 +599,10 @@ function produceSharedObjects(R: ResourceId, id: (n: Name) => PrincipalId): unkn
     if (v === undefined) throw new Error(`no task ${t}`);
     return v;
   };
+  // Another first change by bob on the same state: equivocation (§26.2).
+  const bobTwin = fork("bob");
+  const twin = bobTwin.apply(setTitle(task(bobTwin, t1), "Plan the release (bob, twin)").intent);
+  if (twin === null) throw new Error("the twin made no change");
   const local: LocalChange[] = [];
   const keep = (c: LocalChange | null) => {
     if (c !== null) local.push(c);
@@ -663,6 +667,13 @@ function produceSharedObjects(R: ResourceId, id: (n: Name) => PrincipalId): unkn
         // [1, change]: the framing a Snapshot uses, around a change chunk.
         plaintext: toHex(frameChange(firstBob)),
         expect: "INVALID_AUTOMERGE_BYTES",
+      },
+      {
+        name: "change_equivocation",
+        kind: "change",
+        plaintext: toHex(twin.plaintext),
+        signer: "bob",
+        expect: "ACTOR_EQUIVOCATION",
       },
     ],
   };
@@ -997,7 +1008,8 @@ async function consumeSharedObjects(
             applyAll(p, [n]);
             got = "ACCEPTED";
           } catch (e) {
-            got = (e as { diagnostic?: string }).diagnostic ?? String(e);
+            const err = e as { diagnostic?: string; code?: string };
+            got = err.diagnostic ?? err.code ?? String(e);
           }
           return ensure(got === n.expect, () => `got ${got}`);
         }
