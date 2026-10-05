@@ -9,6 +9,12 @@ demonstrations, built on the real `openlfcp/sdk-ts` packages.
 
 > MVP reference software: not for data you need to protect.
 
+## Scope
+
+The examples run on sdk-ts and sdk-rs at their pinned commits.
+They use only the OpenLFCP MVP 0.1 subset of LFCP-WIRE-01 at
+`mvp-0.1-baseline.6`.
+
 ## Build from a clean checkout
 
 The examples use the sdk-ts packages from a checkout next to this
