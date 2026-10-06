@@ -76,6 +76,17 @@ const OPTIONS = {
   help: { type: "boolean", short: "h" },
 } as const;
 
+/**
+ * A Resource ID is shown as 43 characters of base64url, which start with
+ * "-" one time in 64; parseArgs would read such an argument as an option.
+ * An argument of exactly that shape is protected through parsing (no
+ * option of this CLI has it) and restored afterwards.
+ */
+const DASHED_ID = /^-[A-Za-z0-9_-]{42}$/;
+const PROTECT = "\u0000";
+const unprotect = (text: string): string =>
+  text.startsWith(PROTECT) ? text.slice(PROTECT.length) : text;
+
 type Values = ReturnType<
   typeof parseArgs<{ options: typeof OPTIONS; allowPositionals: true }>
 >["values"];
@@ -91,11 +102,14 @@ export async function run(
   let positionals: string[];
   try {
     ({ values, positionals } = parseArgs({
-      args: [...argv],
+      args: argv.map((a) => (DASHED_ID.test(a) ? PROTECT + a : a)),
       options: OPTIONS,
       allowPositionals: true,
       strict: true,
     }));
+    positionals = positionals.map(unprotect);
+    for (const [key, value] of Object.entries(values))
+      if (typeof value === "string") (values as Record<string, unknown>)[key] = unprotect(value);
   } catch (e) {
     io.err(`error: ${(e as Error).message}`);
     return 2;

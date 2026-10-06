@@ -156,6 +156,23 @@ describe("resource", () => {
       );
   });
 
+  it("takes a Resource ID that starts with a dash (1 in 64 do)", async () => {
+    const c = cli();
+    await c.ok("principal", "create");
+    const [created] = await c.ok("resource", "create", "One", "--endpoint", URL);
+    const id = (created as string).split(" ")[1] as string;
+    // The same Resource ID with its first character a "-" (another ID):
+    // an unknown Resource, not an unknown option.
+    const dashed = `-${id.slice(1)}`;
+    for (const argv of [
+      ["resource", "use", dashed],
+      ["--resource", dashed, "resource", "info"],
+    ]) {
+      const r = await c.call(...argv);
+      expect(r.err.join(" ")).not.toMatch(/option|ambiguous/i);
+    }
+  });
+
   it("lists and switches Resources", async () => {
     const c = cli();
     await c.ok("principal", "create");
