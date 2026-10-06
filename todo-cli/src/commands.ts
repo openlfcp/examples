@@ -22,6 +22,7 @@ import {
   chainOf,
   createResource,
   openProfile,
+  refusalMessage,
   registerResource,
   Session,
   urlOf,
@@ -452,9 +453,17 @@ async function watch(
       `changed ${c.objectId}: ${t?.task?.title ?? "?"} [${t?.task?.status ?? "?"}] (${c.origin})`,
     );
   });
+  // A terminal refusal (POST-017) ends the watch with an error: there is
+  // nothing to watch, and the session will not ask again.
+  let refused: (error: CliError) => void = () => undefined;
+  const refusal = new Promise<never>((_, reject) => {
+    refused = reject;
+  });
   session.client.on((e) => {
     if (e.type === "connection") io.err(`connection ${e.state}${e.reason ? `: ${e.reason}` : ""}`);
     if (e.type === "resource-state" && e.state === "LIVE") io.err("live");
+    if (e.type === "resource-refused")
+      refused(new CliError(refusalMessage(e.resourceId, e.refusal)));
   });
   session.start();
   session.open();
@@ -463,7 +472,7 @@ async function watch(
       ? new Promise((r) => setTimeout(r, ms(v.for, 1)))
       : (signal?.wait ?? new Promise((r) => process.once("SIGINT", r)));
   try {
-    await stop;
+    await Promise.race([stop, refusal]);
   } finally {
     await session.stop();
   }
@@ -471,7 +480,10 @@ async function watch(
 
 function describe(e: { type: string } & Record<string, unknown>): string {
   if (e.type === "error") return `${e.code}: ${e.message}`;
-  if (e.type === "nack") return `NACK ${JSON.stringify((e.outcome as { kind?: unknown }).kind)}`;
+  if (e.type === "nack") {
+    const o = e.outcome as { kind?: unknown; code?: unknown };
+    return `NACK ${String(o.kind)}${o.code === undefined ? "" : ` ${String(o.code)}`}`;
+  }
   return e.type;
 }
 

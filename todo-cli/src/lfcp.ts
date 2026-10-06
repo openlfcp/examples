@@ -5,6 +5,7 @@ import {
   loadControlChain,
   OutboundQueue,
   ProfileCheckpointer,
+  type ResourceRefusal,
   SyncClient,
   type SyncEvent,
   saveControlChain,
@@ -37,7 +38,7 @@ import {
   signControlRecord,
   validateControlChain,
 } from "@openlfcp/wire";
-import { CliError, type Home } from "./home.js";
+import { CliError, type Home, showResource } from "./home.js";
 
 /**
  * Everything the CLI does with LFCP, through the SDK only: no CBOR, COSE,
@@ -220,6 +221,25 @@ export async function urlOf(home: Home, R: ResourceId, url: string | undefined):
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * The one-line error for a server's terminal refusal of a Resource (POST-017),
+ * naming the server and the Resource, then the §62 code.
+ */
+export function refusalMessage(R: ResourceId, refusal: ResourceRefusal): string {
+  const id = showResource(R);
+  const why = refusal.diagnostic === undefined ? "" : `: ${refusal.diagnostic}`;
+  switch (refusal.code) {
+    case "RESOURCE_NOT_HOSTED":
+      return `server ${refusal.url} does not host Resource ${id} (RESOURCE_NOT_HOSTED${why})`;
+    case "AUTHORIZATION_FAILED":
+      return `server ${refusal.url} refused Resource ${id}: this Principal may not read it (AUTHORIZATION_FAILED${why})`;
+    case "RESOURCE_TOMBSTONED":
+      return `server ${refusal.url} says Resource ${id} was deleted (RESOURCE_TOMBSTONED${why})`;
+    default:
+      return `server ${refusal.url} refused Resource ${id} (${refusal.code}${why})`;
+  }
+}
+
 /** One LFCP session for one Resource: SyncClient, applier, outbound queue and checkpoints. */
 export class Session {
   readonly client: SyncClient;
@@ -234,7 +254,7 @@ export class Session {
     readonly R: ResourceId,
     readonly who: Who,
     readonly profile: SharedObjectsDataProfile,
-    url: string,
+    readonly url: string,
     options: { reconnect: boolean },
   ) {
     this.#reconnect = options.reconnect;
@@ -282,6 +302,9 @@ export class Session {
     const deadline = Date.now() + ms;
     for (;;) {
       if (await cond()) return;
+      // A terminal refusal (POST-017): nothing will change by waiting.
+      const refusal = this.client.resourceRefusal(this.R);
+      if (refusal !== null) throw new CliError(refusalMessage(this.R, refusal));
       // A one-shot session does not reconnect: a lost connection ends it.
       const lost = this.events.find((e) => e.type === "connection" && e.reason !== undefined);
       if (!this.#reconnect && lost?.type === "connection")

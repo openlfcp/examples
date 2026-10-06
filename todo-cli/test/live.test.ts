@@ -180,4 +180,38 @@ describe("lfcp-todo ↔ Rust reference server (live)", () => {
       );
     }
   }, 180_000);
+
+  it("sync and watch exit non-zero, naming the server and the Resource, when the server does not host it (POST-017)", async (ctx) => {
+    if (server === undefined) {
+      console.warn(`SKIPPED: lfcp-todo live (${skip})`);
+      ctx.skip();
+      return;
+    }
+    const url = server.url;
+    const d = cli("d");
+    await d.run("principal", "create");
+    // Created here, never hosted: to the server it is the same as a purged one.
+    const created = (await d.run("resource", "create", "Never hosted 017", "--endpoint", url))
+      .join("\n")
+      .match(/^Resource (\S+)/m);
+    const id = created?.[1] as string;
+    const expected = `error: server ${url} does not host Resource ${id} (RESOURCE_NOT_HOSTED)`;
+    const invoke = async (...argv: string[]) => {
+      const err: string[] = [];
+      const started = Date.now();
+      const code = await run(["--home", d.home, ...argv], {
+        out: () => undefined,
+        err: (l) => err.push(l),
+      });
+      return { code, err, ms: Date.now() - started };
+    };
+    const sync = await invoke("sync");
+    expect(sync.code).toBe(1);
+    expect(sync.err).toContain(expected);
+    expect(sync.ms).toBeLessThan(10_000); // not the 30 s sync timeout
+    const watch = await invoke("watch", "--for", "60000");
+    expect(watch.code).toBe(1);
+    expect(watch.err).toContain(expected);
+    expect(watch.ms).toBeLessThan(10_000);
+  }, 60_000);
 });

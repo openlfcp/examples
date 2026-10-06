@@ -67,6 +67,12 @@ lfcp-todo --home ./b watch                # live changes until Ctrl-C
 
 - `sync` connects, catches up (Control, keys, data), sends the queue, waits
   for the ACKs and exits; `watch` stays connected and prints changes.
+- When the server refuses the Resource for good, `sync` and `watch` exit 1
+  at once with the server, the Resource and the §62 code, for example
+  `error: server wss://… does not host Resource <id> (RESOURCE_NOT_HOSTED)`
+  (a purged Resource, a restored server, or a Resource never hosted there),
+  or `… this Principal may not read it (AUTHORIZATION_FAILED)` after a
+  revocation.
 - `invite create` grants a fresh Invitation Principal a one-time claim
   (`claim_limit` 1) and seals the current key to it, waits until the server
   has both, and prints the `lfcp://join/…#secret=…` link. **The link is a
