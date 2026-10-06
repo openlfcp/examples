@@ -17,7 +17,7 @@ transcript and checks the outcome.
 
 The examples run on sdk-ts and sdk-rs at their pinned commits.
 They use only the OpenLFCP MVP 0.1 subset of LFCP-WIRE-01 at
-`mvp-0.1-baseline.6`.
+`mvp-0.1-baseline.8`.
 
 ## Build from a clean checkout
 

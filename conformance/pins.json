@@ -1,6 +1,6 @@
 {
   "description": "The SDK commits and spec baseline a release conformance run uses (CI runs with --strict). Move them deliberately, with the run green.",
-  "sdk_rs": "74019670ebbf364089c2d57495b347769ca7e562",
-  "sdk_ts": "5df29ae5c24555f0c1b57993f71175f2c554001e",
-  "spec": "c13aef1245c3f4d433fc2a07635ad92e7552841b"
+  "sdk_rs": "41dc53297c27bebf649d41823df0abc554334007",
+  "sdk_ts": "af6e6f1eac9ea5adc6749a5ddea5fbb5a9da796e",
+  "spec": "da3977f927feaf3e7c5b8f653797d3696ce0613b"
 }
