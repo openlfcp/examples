@@ -1,6 +1,6 @@
 {
   "name": "@openlfcp-examples/todo-cli",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "lfcp-todo: a headless Todo CLI over the real OpenLFCP SDK (LFCP-039).",
   "license": "Apache-2.0",

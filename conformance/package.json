@@ -1,6 +1,6 @@
 {
   "name": "@openlfcp-examples/conformance",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Cross-language conformance of sdk-ts and sdk-rs (LFCP-070): fixture exchange over protocol bytes and the compatibility matrix.",
   "license": "Apache-2.0",
