@@ -110,8 +110,11 @@ interface VectorRun {
   source: string;
 }
 const vectors: VectorRun[] = [];
+// The baselines sdk-ts's result files were written at (checked below).
+const tsResultBaselines: string[] = [];
 for (const suite of ["lfcp-test-vectors-01", "shared-objects-test-vectors-01"]) {
   const r = JSON.parse(readFileSync(join(SDK_TS, "conformance/.results", `${suite}.json`), "utf8"));
+  tsResultBaselines.push(r.baseline);
   vectors.push({
     sdk: "ts",
     suite: r.suite,
@@ -196,6 +199,13 @@ if (specs[0].commit !== specs[1].commit)
   problems.push(`spec pins differ: sdk-rs ${specs[0].tag}, sdk-ts ${specs[1].tag}`);
 for (const text of specLocks)
   if (/01\.1/.test(text)) problems.push(`a spec.lock names LFCP-WIRE-01.1: ${text}`);
+// sdk-ts's vector results are files its last conformance run left behind:
+// results from another baseline would put stale numbers in the matrix.
+for (const baseline of tsResultBaselines)
+  if (baseline !== specs[1].tag)
+    problems.push(
+      `sdk-ts vector results are from ${baseline}, not ${specs[1].tag}: run pnpm test:conformance in sdk-ts`,
+    );
 const pins = JSON.parse(readFileSync(join(pkg, "pins.json"), "utf8"));
 for (const [name, root] of [
   ["sdk_rs", SDK_RS],
