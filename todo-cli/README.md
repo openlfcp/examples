@@ -110,3 +110,6 @@ pnpm test
 `todo-cli/test/live.test.ts` drives two CLI homes against the Rust
 reference server (built with cargo from `../server`, as the sdk-ts interop
 tests do); it is skipped, saying why, when cargo or the checkout is missing.
+It starts the server with the sdk-ts harness
+(`../sdk-ts/conformance/interop/rust-server.mjs`), so no server outlives
+the test process, even when that process is SIGKILLed.
