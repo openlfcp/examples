@@ -11,6 +11,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { consumeSections, produceSections } from "./sections-ts.js";
 import {
   actorSequence,
   type ControlRecordId,
@@ -1064,21 +1065,9 @@ async function consumeSharedObjects(
 // writes `<dir>/sections-results-<consumer>.json` ({ consumer, checks }),
 // one check `sections.<scenario id>` per scenario.
 //
-// Not yet implemented here: the TypeScript section model is being written
-// (LFCP-02-012 to 018). Until then this adapter produces no scenarios and
-// reports no checks, so the matrix shows the sections rows as N/A in the
-// directions involving TypeScript (known-gaps.json).
-
-async function produceSections(_dir: string): Promise<void> {
-  // No scenarios yet: a consumer then reports no sections checks.
-}
-
-async function consumeSections(dir: string): Promise<void> {
-  writeFileSync(
-    join(dir, "sections-results-ts.json"),
-    `${JSON.stringify({ consumer: "ts", checks: [] }, null, 2)}\n`,
-  );
-}
+// The TypeScript side is sections-ts.ts: sdk-ts writes its scenarios through
+// its section writer and consumes the other SDK's through its section
+// admission (LFCP-02-023).
 
 const [command, dir] = process.argv.slice(2);
 if (command === "produce" && dir !== undefined) await produce(dir);

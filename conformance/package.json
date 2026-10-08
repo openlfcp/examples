@@ -9,6 +9,7 @@
     "node": ">=24"
   },
   "dependencies": {
+    "@automerge/automerge": "3.5.0",
     "@openlfcp/core": "link:../../sdk-ts/packages/core",
     "@openlfcp/crypto": "link:../../sdk-ts/packages/crypto",
     "@openlfcp/shared-objects": "link:../../sdk-ts/packages/shared-objects",
