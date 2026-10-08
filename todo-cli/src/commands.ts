@@ -9,6 +9,7 @@ import { LfcpError, type ObjectId, type ResourceId, toBase64url, toHex } from "@
 import {
   complete,
   createTask,
+  PROFILE_ID,
   principalRef,
   type SharedObjectsDataProfile,
   setStatus,
@@ -320,8 +321,14 @@ async function dispatch(
         secrets: home.secrets,
         now: () => Date.now(),
         timeout: new Promise((r) => setTimeout(r, ms(v.timeout, 30_000)).unref()),
+        // Only Shared Objects: another profile is refused before the claim, so the link stays usable.
+        dataProfiles: [PROFILE_ID],
         ...(v.url === undefined ? {} : { url: v.url }),
       });
+      if (result.kind === "profile-unsupported")
+        throw new CliError(
+          `the collaboration uses ${result.dataProfile}, which lfcp-todo cannot open; the invitation was not used`,
+        );
       if (result.kind === "refused")
         throw new CliError(`the invitation was refused by the coordinator (${result.code})`);
       if (result.kind === "unavailable") throw new CliError(`could not claim: ${result.reason}`);
