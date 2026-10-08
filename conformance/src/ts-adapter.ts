@@ -1069,8 +1069,8 @@ async function consumeSharedObjects(
 // its section writer and consumes the other SDK's through its section
 // admission (LFCP-02-023).
 
-// The schedule runs (LFCP-02-024) need the same section model: until then
-// this adapter runs no schedules and checks none.
+// The schedule runs (LFCP-02-024): not wired to the section model yet;
+// until then this adapter runs no schedules and checks none.
 
 async function produceSchedules(_dir: string): Promise<void> {}
 
