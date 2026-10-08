@@ -1044,10 +1044,50 @@ async function consumeSharedObjects(
   }
 }
 
+// ---------------------------------------------------------------- shared sections
+//
+// The shared sections exchange (LFCP-02-023, LFCP-02-024), bundle
+// `lfcp-interop-sections/1` in `<dir>/sections.json`, as the Rust adapter
+// writes it (sdk-rs crates/lfcp/examples/interop_sections.rs):
+//
+//   { format, producer, scenarios: [{ id, description, resource_id,
+//     principals: { <name>: <principal hex> },
+//     changes: [{ signer: <name>, framed_plaintext: <hex> }],
+//     expected: { classification, tree: [[id, parent, depth, kind]], hidden,
+//       recovery: { <node>: <fact> }, invalid: { <node>: <diagnostic> },
+//       collisions, refused: { <change hash>: <code> }, waiting,
+//       retained_concurrent_edits, texts: { <node>: <text> },
+//       titles: { <task>: <title> } } }] }
+//
+// A consumer replays each scenario's changes through its section admission,
+// in order and in reverse with duplicates, derives the same summary and
+// writes `<dir>/sections-results-<consumer>.json` ({ consumer, checks }),
+// one check `sections.<scenario id>` per scenario.
+//
+// Not yet implemented here: the TypeScript section model is being written
+// (LFCP-02-012 to 018). Until then this adapter produces no scenarios and
+// reports no checks, so the matrix shows the sections rows as N/A in the
+// directions involving TypeScript (known-gaps.json).
+
+async function produceSections(_dir: string): Promise<void> {
+  // No scenarios yet: a consumer then reports no sections checks.
+}
+
+async function consumeSections(dir: string): Promise<void> {
+  writeFileSync(
+    join(dir, "sections-results-ts.json"),
+    `${JSON.stringify({ consumer: "ts", checks: [] }, null, 2)}\n`,
+  );
+}
+
 const [command, dir] = process.argv.slice(2);
 if (command === "produce" && dir !== undefined) await produce(dir);
 else if (command === "consume" && dir !== undefined) await consume(dir);
+else if (command === "produce-sections" && dir !== undefined) await produceSections(dir);
+else if (command === "consume-sections" && dir !== undefined) await consumeSections(dir);
 else {
-  process.stderr.write("usage: ts-adapter (produce|consume) <dir>\n");
+  process.stderr.write(
+    "usage: ts-adapter (produce|consume|produce-sections|consume-sections) <dir>\n",
+  );
   process.exitCode = 2;
 }

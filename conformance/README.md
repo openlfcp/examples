@@ -1,7 +1,8 @@
 # conformance: sdk-ts ⇄ sdk-rs (LFCP-070)
 
 Proves that the TypeScript and Rust SDKs are independent, interoperable
-LFCP implementations, in the three modes of LFCP-070:
+LFCP implementations, in the three modes of LFCP-070 and the shared sections
+exchange of MVP 0.2:
 
 - **A. Byte-exact.** Each SDK passes the official LFCP-TEST-VECTORS-01 and
   SHARED-OBJECTS-TEST-VECTORS-01 (and the Automerge corpus and profile
@@ -30,6 +31,20 @@ LFCP implementations, in the three modes of LFCP-070:
     state and the same conflict sets, never the same bytes.
   - Profile negatives: a foreign change actor, a bad chunk checksum, a
     change chunk as a Snapshot, and per-field §74.1 diagnostics.
+
+- **D. Shared sections** (LFCP-02-023, LFCP-02-024). The producer writes
+  scenarios of SHARED-SECTIONS-TEST-VECTORS-01 with its own authoring API:
+  a section tree, concurrent insertion, a placement conflict, a parent
+  cycle, a delete against an edit, split and join, Unicode Text, and three
+  refusals or isolations (a mutated children list with a change held
+  behind it, an actor mismatch, a node ID collision). Each scenario carries
+  its framed changes with their signers and the producer's summary after
+  admission. The consumer replays them, in order and in reverse with
+  duplicates, and must derive the same effective tree, facts, diagnostics,
+  collisions, refusals, held changes, retained edits and texts. The bundle
+  is `sections.json` (`lfcp-interop-sections/1`); the Rust adapter is
+  `sdk-rs/crates/lfcp/examples/interop_sections.rs`. The TypeScript side is
+  a stub until its section model is complete (known-gaps.json).
 
 The exchange is protocol bytes in files (`bundle.json`, hex), across
 processes. The Rust adapter is `sdk-rs/crates/lfcp/examples/interop.rs`;

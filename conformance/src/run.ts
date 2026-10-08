@@ -59,21 +59,25 @@ function run(cmd: string, argv: string[], cwd?: string): string {
   return r.stdout + r.stderr;
 }
 
-const adapter: Record<Side, (command: "produce" | "consume", dir: string) => void> = {
-  rust: (command, dir) =>
+type Command = "produce" | "consume" | "produce-sections" | "consume-sections";
+const adapter: Record<Side, (command: Command, dir: string) => void> = {
+  // The shared sections exchange (LFCP-02-023) is its own Rust example.
+  rust: (command, dir) => {
+    const sections = command.endsWith("-sections");
     void run("cargo", [
       "run",
       "--quiet",
       "--manifest-path",
       join(SDK_RS, "Cargo.toml"),
       "--example",
-      "interop",
+      sections ? "interop_sections" : "interop",
       "--features",
-      "shared-objects",
+      sections ? "shared-sections" : "shared-objects",
       "--",
-      command,
+      sections ? command.replace("-sections", "") : command,
       dir,
-    ]),
+    ]);
+  },
   ts: (command, dir) => void run(process.execPath, [join(here, "ts-adapter.js"), command, dir]),
 };
 
@@ -94,10 +98,15 @@ for (const producer of sides) {
   const dir = join(work, producer);
   mkdirSync(dir);
   adapter[producer]("produce", dir);
+  adapter[producer]("produce-sections", dir);
   for (const consumer of sides) {
     adapter[consumer]("consume", dir);
+    adapter[consumer]("consume-sections", dir);
     const results = JSON.parse(readFileSync(join(dir, `results-${consumer}.json`), "utf8"));
-    runs.push({ producer, consumer, checks: results.checks });
+    const sections = JSON.parse(
+      readFileSync(join(dir, `sections-results-${consumer}.json`), "utf8"),
+    );
+    runs.push({ producer, consumer, checks: [...results.checks, ...sections.checks] });
   }
 }
 
