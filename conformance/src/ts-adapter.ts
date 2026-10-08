@@ -11,7 +11,6 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { consumeSections, produceSections } from "./sections-ts.js";
 import {
   actorSequence,
   type ControlRecordId,
@@ -86,6 +85,7 @@ import {
   verifyAuthProof,
   verifyKeyPackage,
 } from "@openlfcp/wire";
+import { consumeSections, produceSections } from "./sections-ts.js";
 
 const FORMAT = "lfcp-interop-bundle/1";
 const PROFILE = "org.openlfcp.shared-objects.v1";
