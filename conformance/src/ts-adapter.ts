@@ -1069,14 +1069,28 @@ async function consumeSharedObjects(
 // its section writer and consumes the other SDK's through its section
 // admission (LFCP-02-023).
 
+// The schedule runs (LFCP-02-024) need the same section model: until then
+// this adapter runs no schedules and checks none.
+
+async function produceSchedules(_dir: string): Promise<void> {}
+
+async function consumeSchedules(dir: string): Promise<void> {
+  writeFileSync(
+    join(dir, "schedules-results-ts.json"),
+    `${JSON.stringify({ consumer: "ts", checks: [] }, null, 2)}\n`,
+  );
+}
+
 const [command, dir] = process.argv.slice(2);
 if (command === "produce" && dir !== undefined) await produce(dir);
 else if (command === "consume" && dir !== undefined) await consume(dir);
 else if (command === "produce-sections" && dir !== undefined) await produceSections(dir);
 else if (command === "consume-sections" && dir !== undefined) await consumeSections(dir);
+else if (command === "produce-schedules" && dir !== undefined) await produceSchedules(dir);
+else if (command === "consume-schedules" && dir !== undefined) await consumeSchedules(dir);
 else {
   process.stderr.write(
-    "usage: ts-adapter (produce|consume|produce-sections|consume-sections) <dir>\n",
+    "usage: ts-adapter (produce|consume|produce-sections|consume-sections|produce-schedules|consume-schedules) <dir>\n",
   );
   process.exitCode = 2;
 }

@@ -16,10 +16,19 @@
 // this package, or LFCP_SDK_RS / LFCP_SDK_TS.
 
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { schedules } from "./schedules.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = resolve(here, "..");
@@ -36,6 +45,15 @@ const STRICT = args.includes("--strict");
 const WRITE_MATRIX = args.includes("--write-matrix")
   ? resolve(args[args.indexOf("--write-matrix") + 1] as string)
   : undefined;
+// LFCP-02-024: the recorded schedule seeds. The default run is the 100
+// recorded seeds; --schedules-large is the long run for CI or a Linux box.
+const LARGE = args.includes("--schedules-large");
+const SCHEDULES = args.includes("--schedules")
+  ? Number(args[args.indexOf("--schedules") + 1])
+  : LARGE
+    ? 1000
+    : 100;
+const SCHEDULE_STEPS = LARGE ? 48 : 24;
 
 type Side = "rust" | "ts";
 type Result = "PASS" | "FAIL" | "NOT_APPLICABLE";
@@ -59,11 +77,17 @@ function run(cmd: string, argv: string[], cwd?: string): string {
   return r.stdout + r.stderr;
 }
 
-type Command = "produce" | "consume" | "produce-sections" | "consume-sections";
+type Command =
+  | "produce"
+  | "consume"
+  | "produce-sections"
+  | "consume-sections"
+  | "produce-schedules"
+  | "consume-schedules";
 const adapter: Record<Side, (command: Command, dir: string) => void> = {
   // The shared sections exchange (LFCP-02-023) is its own Rust example.
   rust: (command, dir) => {
-    const sections = command.endsWith("-sections");
+    const sections = command.endsWith("-sections") || command.endsWith("-schedules");
     void run("cargo", [
       "run",
       "--quiet",
@@ -74,7 +98,7 @@ const adapter: Record<Side, (command: Command, dir: string) => void> = {
       "--features",
       sections ? "shared-sections" : "shared-objects",
       "--",
-      sections ? command.replace("-sections", "") : command,
+      command.endsWith("-sections") ? command.replace("-sections", "") : command,
       dir,
     ]);
   },
@@ -99,14 +123,32 @@ for (const producer of sides) {
   mkdirSync(dir);
   adapter[producer]("produce", dir);
   adapter[producer]("produce-sections", dir);
+  writeFileSync(
+    join(dir, "schedules.json"),
+    JSON.stringify(schedules(SCHEDULES, { steps: SCHEDULE_STEPS })),
+  );
+  copyFileSync(
+    join(pkg, "regressions", "sections-regressions.json"),
+    join(dir, "sections-regressions.json"),
+  );
+  adapter[producer]("produce-schedules", dir);
   for (const consumer of sides) {
     adapter[consumer]("consume", dir);
     adapter[consumer]("consume-sections", dir);
-    const results = JSON.parse(readFileSync(join(dir, `results-${consumer}.json`), "utf8"));
-    const sections = JSON.parse(
-      readFileSync(join(dir, `sections-results-${consumer}.json`), "utf8"),
-    );
-    runs.push({ producer, consumer, checks: [...results.checks, ...sections.checks] });
+    adapter[consumer]("consume-schedules", dir);
+    const read = (name: string) =>
+      JSON.parse(readFileSync(join(dir, `${name}-${consumer}.json`), "utf8")).checks;
+    runs.push({
+      producer,
+      consumer,
+      checks: [...read("results"), ...read("sections-results"), ...read("schedules-results")],
+    });
+  }
+  // Minimized failures (LFCP-02-024) go to the report, to become fixtures.
+  if (existsSync(join(dir, "regressions"))) {
+    mkdirSync(join(OUT, "regressions"), { recursive: true });
+    for (const f of readdirSync(join(dir, "regressions")))
+      copyFileSync(join(dir, "regressions", f), join(OUT, "regressions", `${producer}-${f}`));
   }
 }
 

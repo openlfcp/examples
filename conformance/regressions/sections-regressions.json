@@ -1,0 +1,6 @@
+{
+  "format": "lfcp-interop-sections/1",
+  "producer": "fixtures",
+  "description": "Minimized failures of the schedule runs (LFCP-02-024), kept as regression fixtures: every consumer replays them on every run. A run writes new ones under report/regressions/; move them here deliberately, with the fix.",
+  "scenarios": []
+}
