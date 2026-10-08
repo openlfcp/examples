@@ -673,7 +673,8 @@ function produceSharedObjects(R: ResourceId, id: (n: Name) => PrincipalId): unkn
         kind: "change",
         plaintext: toHex(twin.plaintext),
         signer: "bob",
-        expect: "ACTOR_EQUIVOCATION",
+        // SHARED-OBJECTS-PROFILE-01 §14.1 (baseline.9, POST-001): held, not refused.
+        expect: "HELD",
       },
     ],
   };
@@ -967,6 +968,7 @@ async function consumeSharedObjects(
   };
   /** Apply framed changes with their signers through the §11 actor check. */
   const applyAll = (profile: SharedObjectsDataProfile, changes: Bundle[]) => {
+    let held = false;
     for (const [i, c] of changes.entries()) {
       const plaintext = fromHex(c.plaintext);
       const change = profile
@@ -974,7 +976,9 @@ async function consumeSharedObjects(
         .decode(plaintext);
       const r = profile.apply({ unitId: rnd(32) as never }, change);
       if (r.pending) throw new Error(`change ${i} has missing dependencies`);
+      held = r.held !== undefined;
     }
+    return held;
   };
   const expect = canonical(so.expect);
 
@@ -1005,8 +1009,7 @@ async function consumeSharedObjects(
           const p = reader();
           applyAll(p, so.changes);
           try {
-            applyAll(p, [n]);
-            got = "ACCEPTED";
+            got = applyAll(p, [n]) ? "HELD" : "ACCEPTED";
           } catch (e) {
             const err = e as { diagnostic?: string; code?: string };
             got = err.diagnostic ?? err.code ?? String(e);
