@@ -1,0 +1,14 @@
+# lfcp-server configuration for the restore rehearsal only (LFCP-02-074).
+#
+# server/deploy/server.toml with the loopback URL the test clients use as
+# the Control Coordinator and endpoint, and no per-IP limits: every client
+# of the rehearsal is 127.0.0.1 behind Docker's port forwarding. A real
+# deployment uses server/deploy/server.toml.
+
+bind = "0.0.0.0:7820"
+ws_path = "/v1/ws"
+state_dir = "/var/lib/lfcp"
+log_level = "info"
+public_urls = ["ws://127.0.0.1:17830/v1/ws"]
+connections_per_ip_per_minute = 0
+hosts_per_ip_per_day = 0

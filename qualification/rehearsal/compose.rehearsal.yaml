@@ -1,0 +1,10 @@
+# Overlay on server/deploy/compose.yaml for the restore rehearsal
+# (LFCP-02-074, rehearse-restore.sh): the server alone, published on
+# loopback for the test clients (plain ws://), with the rehearsal
+# configuration. The state stays in the deploy compose's lfcp-state volume.
+services:
+  lfcp-server:
+    ports:
+      - "127.0.0.1:17830:7820"
+    volumes:
+      - ${LFCP_REHEARSAL_CONFIG}:/etc/lfcp/server.toml:ro
