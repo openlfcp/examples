@@ -9,9 +9,10 @@
 //     answers the repeat (§47), and the batch is accepted under the same
 //     receipt. A applies it once; B's next batch continues its sequence.
 // F2. The server loses data (ADR 0008): its store is replaced by a copy
-//     taken before B's accepted batch. B offers it again (status
-//     "reoffered", §4.2 of SDK-SECTIONS-INTEGRATION-01), and a member who
-//     joins after the restore receives it.
+//     taken before B's accepted batch, while A (which holds the batch too)
+//     is stopped. B offers it again (status "reoffered", §4.2 of
+//     SDK-SECTIONS-INTEGRATION-01), and a member who joins after the
+//     restore receives it.
 // F3. Revoked while offline, then restarted twice: B's batch is blocked,
 //     access server-refused; each restart keeps the queue, the receipt and
 //     the local candidate as they were. A never receives the batch.
@@ -239,6 +240,9 @@ describe("integrated crash, access and recovery faults (LFCP-02-070)", () => {
       await waitFor("accepted", () => accepted(b, "b-before-loss"), 60_000);
       await waitFor("A has it", () => title(a, 1001) === "B, before the loss", 60_000);
 
+      // A holds B's batch too and could re-supply it first; with A stopped,
+      // B is the only holder, so B must offer it again.
+      await a.stop();
       await server.restore(backup);
       await waitFor(
         "B offers the lost batch again",
@@ -246,6 +250,8 @@ describe("integrated crash, access and recovery faults (LFCP-02-070)", () => {
         60_000,
       );
       await waitFor("B's queue empty", () => b.queueEmpty(), 60_000);
+      a.start();
+      await waitFor("A LIVE again", () => a.client.resourceState(R) === "LIVE", 60_000);
 
       // A member who joins after the restore receives B's batch from the server.
       const vaultC = await openVault();
