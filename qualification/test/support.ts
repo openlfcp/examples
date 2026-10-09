@@ -3,9 +3,10 @@
 // MVP-0.2-TEST-AND-RELEASE-PLAN §7 steps 1–3, on the real SDK and the Rust
 // reference server.
 
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   acceptInvitation,
   createInvitation,
@@ -213,4 +214,24 @@ export function indexOf(hay: Uint8Array, needle: Uint8Array): number {
     return i;
   }
   return -1;
+}
+
+/** Where the qualification records its facts for the evidence report (gitignored). */
+export const RESULTS = join(dirname(fileURLToPath(import.meta.url)), "..", ".results");
+
+/** Records the facts of one step of a run: `<RESULTS>/<run>.json`, a step → facts map. */
+export function record(run: string, step: string, facts: unknown): void {
+  mkdirSync(RESULTS, { recursive: true });
+  const file = join(RESULTS, `${run}.json`);
+  let all: Record<string, unknown> = {};
+  try {
+    all = JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    all = {};
+  }
+  all[step] = facts;
+  writeFileSync(
+    file,
+    `${JSON.stringify(all, (_, v) => (typeof v === "bigint" ? v.toString() : v instanceof Uint8Array ? Buffer.from(v).toString("hex") : v), 2)}\n`,
+  );
 }

@@ -24,3 +24,6 @@ pnpm-debug.log*
 
 # The generated conformance report (LFCP-070).
 conformance/report/
+
+# The two-vault qualification run facts (evidence input, not committed)
+qualification/.results/
