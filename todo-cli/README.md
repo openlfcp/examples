@@ -84,6 +84,90 @@ lfcp-todo --home ./b watch                # live changes until Ctrl-C
   `CONFLICT <field>: "a" | "b"` under its Task in `task list` until a new
   edit resolves it.
 
+## Shared sections
+
+A shared section (SHARED-SECTIONS-PROFILE-01) is an ordered tree of tasks,
+paragraphs and list items in its own Resource, with its own key. The
+`section` commands use the SDK's section API only: each write is one batch
+of section intents committed with `SyncClient.commit`, which returns a
+durable receipt; the batch is stored with its Data Units and sent at the
+next `sync`. The same home can hold section Resources and legacy Task lists
+side by side; which commands apply is decided by the Resource's Genesis
+profile (`org.openlfcp.shared-sections.v1` or
+`org.openlfcp.shared-objects.v1`), not by a name.
+
+```sh
+# home A: a section with nested content, hosted and synced
+lfcp-todo --home ./a section create "Launch plan" --endpoint ws://127.0.0.1:8080/v1/ws
+lfcp-todo --home ./a section add task "Write the API"            # added task <T>
+lfcp-todo --home ./a section add paragraph "Notes" --under <T>
+lfcp-todo --home ./a section add task "Review the API" --under <T>
+lfcp-todo --home ./a section add item "Book the room"            # added item <I>
+lfcp-todo --home ./a resource host
+lfcp-todo --home ./a sync
+lfcp-todo --home ./a section show
+lfcp-todo --home ./a invite create        # the link is a SECRET, as for Task lists
+
+# home B: join, then both work offline and sync
+lfcp-todo --home ./b invite accept 'lfcp://join/…#secret=…'
+lfcp-todo --home ./a section move <I> --under <R>      # A: under "Review the API"
+lfcp-todo --home ./b section move <I> --under <T>      # B: under "Write the API"
+lfcp-todo --home ./a sync; lfcp-todo --home ./b sync; lfcp-todo --home ./a sync
+lfcp-todo --home ./a section show
+lfcp-todo --home ./a section resolve <I> --under <T>
+lfcp-todo --home ./a sync; lfcp-todo --home ./b sync
+```
+
+What to expect:
+
+- Every write prints `batch cli-…: N unit(s), durable; run sync to send` on
+  stderr. `section batches` lists each batch as `pending` until a sync, and
+  `sync` ends with `section VALID` (or the classification) and one
+  `batch cli-… accepted` line per batch the server has durably accepted.
+- `section show` prints the title and classification, then the visible
+  tree, indented by depth:
+
+  ```text
+  Launch plan  VALID
+    <T>  [todo] Write the API
+      <P>  Notes
+      <R>  [todo] Review the API
+    <I>  - Book the room
+  ```
+
+- After the two offline moves, both homes show the same tree with
+  `STRUCTURAL_ATTENTION` and a line
+  `PLACEMENT_CONFLICT <I>: under <R> | <T>`: the node is blocked, with both
+  candidate parents, and nothing is duplicated. `section resolve` writes a
+  fresh placement that supersedes both; after syncing, both homes are
+  `VALID` again. Field conflicts (`CONFLICT <id> title: …`), invalid nodes
+  and edits kept under a deleted node are listed the same way: problems
+  are shown, never hidden.
+- `section edit` replaces a paragraph's or item's Text; positions are
+  Unicode scalars, so any text works. `section delete` hides a node and its
+  subtree; the history is kept.
+- `task …` on a section, or `section …` on a Task list, exits 1 and names
+  the right commands.
+
+### A reference is not access
+
+```sh
+lfcp-todo --home ./a section ref      # lfcp1:<resource>#section:<id>
+lfcp-todo --home ./c section lookup 'lfcp1:…#section:…'
+# error: this home has no access to Resource …: a reference is not a capability. …
+lfcp-todo --home ./b section lookup 'lfcp1:…#section:…'
+# current Resource …: this home is a member; run section show
+```
+
+A section reference names the Resource and the section: it carries no key
+and grants nothing, so it may be copied into notes. Access comes only from
+a capability grant, which the one-time invitation link delivers with the
+key. A home that holds only the reference can do nothing with it.
+
+The shared title and content are encrypted Data Units; the local Resource
+label of a section is the generic `section`, because labels are local
+metadata that the storage keeps in the clear.
+
 ## Storage
 
 `--home <dir>`, or `$LFCP_TODO_HOME`, or `~/.openlfcp-cli`:
@@ -107,9 +191,11 @@ pnpm test
 ```
 
 `todo-cli/test/cli.test.ts` runs every command against fresh homes.
+`todo-cli/test/sections.test.ts` runs the section commands offline.
 `todo-cli/test/live.test.ts` drives two CLI homes against the Rust
 reference server (built with cargo from `../server`, as the sdk-ts interop
-tests do); it is skipped, saying why, when cargo or the checkout is missing.
-It starts the server with the sdk-ts harness
+tests do); `todo-cli/test/sections-live.test.ts` does the same with the
+section walkthrough above, step by step. Both are skipped, saying why, when
+cargo or the checkout is missing. They start the server with the sdk-ts harness
 (`../sdk-ts/conformance/interop/rust-server.mjs`), so no server outlives
 the test process, even when that process is SIGKILLed.

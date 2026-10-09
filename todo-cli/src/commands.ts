@@ -4,25 +4,28 @@ import {
   createInvitation,
   dekResolver,
   resourceSyncState,
+  type StatusSnapshot,
 } from "@openlfcp/client";
 import { LfcpError, type ObjectId, type ResourceId, toBase64url, toHex } from "@openlfcp/core";
 import {
   complete,
   createTask,
-  PROFILE_ID,
   principalRef,
-  type SharedObjectsDataProfile,
+  SharedObjectsDataProfile,
   setStatus,
   setTitle,
   type Task,
   type TaskStatus,
   type TaskView,
 } from "@openlfcp/shared-objects";
+import { SharedSectionsDataProfile } from "@openlfcp/shared-objects/sections";
 import { CliError, defaultHome, Home, SECRETS_CAVEAT, showResource } from "./home.js";
 import {
   chainOf,
   createResource,
   openProfile,
+  PROFILES,
+  type Profile,
   refusalMessage,
   registerResource,
   Session,
@@ -30,6 +33,7 @@ import {
   type Who,
   writeIntent,
 } from "./lfcp.js";
+import { nodeLine, SECTION_USAGE, section, sectionStatus } from "./sections.js";
 
 /** Where the CLI writes: stdout and stderr lines (injectable for tests). */
 export interface Io {
@@ -63,8 +67,10 @@ Usage: lfcp-todo [--home <dir>] [--resource <id>] <command> ...
   invite create [--endpoint <url>]      a one-time bearer link (a SECRET: share privately)
   invite accept <link> [--name <name>]  claim it as this home's Principal and sync
 
+${SECTION_USAGE}
+
 Options: --home <dir> (default ~/.openlfcp-cli or $LFCP_TODO_HOME), --resource <id>.
-Task ids may be given as any unique prefix.`;
+Task and node ids may be given as any unique prefix.`;
 
 const OPTIONS = {
   home: { type: "string" },
@@ -75,6 +81,8 @@ const OPTIONS = {
   name: { type: "string" },
   timeout: { type: "string" },
   for: { type: "string" },
+  under: { type: "string" },
+  after: { type: "string" },
   help: { type: "boolean", short: "h" },
 } as const;
 
@@ -240,26 +248,26 @@ async function dispatch(
     }
     case "task add": {
       const title = need(p, 2, "the Task title");
-      const { R, who, profile } = await local(home, v);
+      const { R, who, profile } = await tasks(home, v);
       const change = createTask({ title, createdBy: who.signer.descriptor.principalId });
       await writeIntent(home, R, who, profile, change.intent);
       io.out(`added ${change.task.id}`);
       return;
     }
     case "task list": {
-      const { profile } = await local(home, v);
+      const { profile } = await tasks(home, v);
       listTasks(profile, io);
       return;
     }
     case "task complete": {
-      const { R, who, profile } = await local(home, v);
+      const { R, who, profile } = await tasks(home, v);
       const view = pick(profile, need(p, 2, "the Task id"));
       await writeIntent(home, R, who, profile, complete(taskOf(view), today()).intent);
       io.out(`completed ${view.id}`);
       return;
     }
     case "task title": {
-      const { R, who, profile } = await local(home, v);
+      const { R, who, profile } = await tasks(home, v);
       const view = pick(profile, need(p, 2, "the Task id"));
       await writeIntent(
         home,
@@ -272,7 +280,7 @@ async function dispatch(
       return;
     }
     case "task status": {
-      const { R, who, profile } = await local(home, v);
+      const { R, who, profile } = await tasks(home, v);
       const view = pick(profile, need(p, 2, "the Task id"));
       const status = need(p, 3, "the status") as TaskStatus;
       await writeIntent(home, R, who, profile, setStatus(taskOf(view), status).intent);
@@ -321,8 +329,8 @@ async function dispatch(
         secrets: home.secrets,
         now: () => Date.now(),
         timeout: new Promise((r) => setTimeout(r, ms(v.timeout, 30_000)).unref()),
-        // Only Shared Objects: another profile is refused before the claim, so the link stays usable.
-        dataProfiles: [PROFILE_ID],
+        // Only the profiles this CLI opens: another is refused before the claim, so the link stays usable.
+        dataProfiles: [...PROFILES],
         ...(v.url === undefined ? {} : { url: v.url }),
       });
       if (result.kind === "profile-unsupported")
@@ -333,13 +341,15 @@ async function dispatch(
         throw new CliError(`the invitation was refused by the coordinator (${result.code})`);
       if (result.kind === "unavailable") throw new CliError(`could not claim: ${result.reason}`);
       const R = result.resourceId;
-      await registerResource(home, R, who, v.name ?? "joined");
+      const chain = await chainOf(home, R);
+      await registerResource(home, R, who, v.name ?? "joined", chain.state.dataProfile);
       home.update({ current: toHex(R) });
       io.out(`joined ${showResource(R)} with grant ${toBase64url(result.grantId)}`);
       await syncOnce(home, R, who, await openProfile(home, R, who), v, io);
       return;
     }
     default:
+      if (group === "section") return section(home, p, v, io, local);
       throw new CliError(`unknown command "${p.join(" ")}" (see --help)`);
   }
 }
@@ -347,11 +357,22 @@ async function dispatch(
 async function local(
   home: Home,
   v: Values,
-): Promise<{ R: ResourceId; who: Who; profile: SharedObjectsDataProfile }> {
+): Promise<{ R: ResourceId; who: Who; profile: Profile }> {
   const R = home.resource(v.resource);
   await chainOf(home, R);
   const who = await home.principal();
   return { R, who, profile: await openProfile(home, R, who) };
+}
+
+/** The current Resource, which must be a legacy Task Resource (Shared Objects). */
+async function tasks(
+  home: Home,
+  v: Values,
+): Promise<{ R: ResourceId; who: Who; profile: SharedObjectsDataProfile }> {
+  const { R, who, profile } = await local(home, v);
+  if (!(profile instanceof SharedObjectsDataProfile))
+    throw new CliError("the current Resource is a shared section: use the section commands");
+  return { R, who, profile };
 }
 
 /** Today's local calendar date, YYYY-MM-DD (a Local Date, §35). */
@@ -411,7 +432,7 @@ async function syncOnce(
   home: Home,
   R: ResourceId,
   who: Who,
-  profile: SharedObjectsDataProfile,
+  profile: Profile,
   v: Values,
   io: Io,
 ): Promise<void> {
@@ -420,23 +441,31 @@ async function syncOnce(
     reconnect: false,
   });
   session.start();
+  let status: StatusSnapshot | undefined;
   try {
     await session.ready(timeout);
     session.open();
     await session.synced(timeout);
+    if (profile instanceof SharedSectionsDataProfile)
+      status = await session.client.statusSnapshot(R);
   } finally {
     await session.stop();
   }
   const merged = session.events.filter(
     (e) => e.type === "unit" && e.outcome.kind === "applied",
   ).length;
-  const conflicts = profile.replica.conflicts();
-  io.out(
-    `in sync: ${merged} unit(s) merged, outbound queue empty` +
-      (Object.keys(conflicts).length > 0
-        ? `; ${Object.keys(conflicts).length} Task(s) with conflicts`
-        : ""),
-  );
+  if (profile instanceof SharedSectionsDataProfile) {
+    io.out(`in sync: ${merged} unit(s) merged, outbound queue empty`);
+    sectionStatus(profile, status, io);
+  } else {
+    const conflicts = profile.replica.conflicts();
+    io.out(
+      `in sync: ${merged} unit(s) merged, outbound queue empty` +
+        (Object.keys(conflicts).length > 0
+          ? `; ${Object.keys(conflicts).length} Task(s) with conflicts`
+          : ""),
+    );
+  }
   for (const e of session.events)
     if (e.type === "error" || e.type === "nack" || e.type === "key-blocked")
       io.err(`note: ${describe(e)}`);
@@ -446,7 +475,7 @@ async function watch(
   home: Home,
   R: ResourceId,
   who: Who,
-  profile: SharedObjectsDataProfile,
+  profile: Profile,
   v: Values,
   io: Io,
   signal: { wait: Promise<unknown> } | undefined,
@@ -454,12 +483,17 @@ async function watch(
   const session = new Session(home, R, who, profile, await urlOf(home, R, v.url), {
     reconnect: true,
   });
-  profile.onObjectChanged((c) => {
-    const t = profile.replica.task(c.objectId as ObjectId);
-    io.out(
-      `changed ${c.objectId}: ${t?.task?.title ?? "?"} [${t?.task?.status ?? "?"}] (${c.origin})`,
-    );
-  });
+  if (profile instanceof SharedSectionsDataProfile)
+    profile.onNodesChanged((c) => {
+      for (const id of c.nodeIds) io.out(`changed ${id}: ${nodeLine(profile, id)} (${c.origin})`);
+    });
+  else
+    profile.onObjectChanged((c) => {
+      const t = profile.replica.task(c.objectId as ObjectId);
+      io.out(
+        `changed ${c.objectId}: ${t?.task?.title ?? "?"} [${t?.task?.status ?? "?"}] (${c.origin})`,
+      );
+    });
   // A terminal refusal (POST-017) ends the watch with an error: there is
   // nothing to watch, and the session will not ask again.
   let refused: (error: CliError) => void = () => undefined;

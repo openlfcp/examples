@@ -31,6 +31,11 @@ import {
   SharedObjectsDataProfile,
   SharedObjectsReplica,
 } from "@openlfcp/shared-objects";
+import {
+  SECTIONS_PROFILE_ID,
+  SectionReplica,
+  SharedSectionsDataProfile,
+} from "@openlfcp/shared-objects/sections";
 import { dekSecretRef, principalKeySecretRef } from "@openlfcp/storage";
 import {
   type ChainResult,
@@ -50,6 +55,10 @@ import { CliError, type Home, showResource } from "./home.js";
 
 export type Linear = Extract<ChainResult, { kind: "linear" }>;
 export type Who = { readonly signer: Signer; readonly agreement: AgreementKeyPair };
+/** A Resource's application state, by the Data Profile its Genesis names. */
+export type Profile = SharedObjectsDataProfile | SharedSectionsDataProfile;
+/** The Data Profiles this CLI opens: legacy Shared Objects Tasks and shared sections. */
+export const PROFILES = [PROFILE_ID, SECTIONS_PROFILE_ID] as const;
 
 export async function chainOf(home: Home, R: ResourceId): Promise<Linear> {
   const chain = await loadControlChain(home.storage, R);
@@ -59,17 +68,27 @@ export async function chainOf(home: Home, R: ResourceId): Promise<Linear> {
   return chain;
 }
 
-/** The Resource's Shared Objects state: restored from its checkpoint, or empty. */
-export async function openProfile(
-  home: Home,
-  R: ResourceId,
-  who: Who,
-): Promise<SharedObjectsDataProfile> {
+/**
+ * The Resource's application state, restored from its checkpoint or empty.
+ * Which profile is dispatched by the validated Genesis, never by a name or
+ * a reference shape (SHARED-SECTIONS-PROFILE-01 §20).
+ */
+export async function openProfile(home: Home, R: ResourceId, who: Who): Promise<Profile> {
+  const chain = await chainOf(home, R);
   const options = { resource: R, principal: who.signer.descriptor.principalId };
   const checkpoint = await home.storage.profileState.checkpoint(R);
-  return checkpoint === undefined
-    ? new SharedObjectsDataProfile(SharedObjectsReplica.empty(options))
-    : SharedObjectsDataProfile.restore(checkpoint, options);
+  switch (chain.state.dataProfile) {
+    case PROFILE_ID:
+      return checkpoint === undefined
+        ? new SharedObjectsDataProfile(SharedObjectsReplica.empty(options))
+        : SharedObjectsDataProfile.restore(checkpoint, options);
+    case SECTIONS_PROFILE_ID:
+      return checkpoint === undefined
+        ? new SharedSectionsDataProfile(SectionReplica.empty(options))
+        : SharedSectionsDataProfile.restore(checkpoint, options);
+    default:
+      throw new CliError(`lfcp-todo cannot open the Data Profile ${chain.state.dataProfile}`);
+  }
 }
 
 /**
@@ -138,6 +157,7 @@ export async function createResource(
   name: string,
   endpoints: readonly string[],
   coordinatorUrl: string,
+  dataProfile: (typeof PROFILES)[number] = PROFILE_ID,
 ): Promise<ResourceId> {
   const R = generateResourceId();
   const dek = generateResourceDEK();
@@ -148,7 +168,7 @@ export async function createResource(
       { resourceId: R, controlSeq: 0n, prevControlId: null },
       {
         type: "GENESIS",
-        dataProfile: PROFILE_ID,
+        dataProfile,
         owner: who.signer.descriptor,
         dekCommitment: dekCommitment(R, epoch0, dek),
         endpoints: endpoints.map((url, i) => ({ url, priority: BigInt(i) })),
@@ -164,7 +184,9 @@ export async function createResource(
   await home.secrets.put(dekSecretRef(R, epoch0), exportSecretKeyBytes(dek));
   const saved = await saveControlChain(home.storage, chain, null);
   if (!saved.ok) throw new CliError(`the Resource was not stored: ${saved.reason}`);
-  await registerResource(home, R, who, name);
+  await registerResource(home, R, who, name, dataProfile);
+  // A section Resource starts empty: its first batch, section.create, is committed by the caller.
+  if (dataProfile === SECTIONS_PROFILE_ID) return R;
   const { replica, change } = SharedObjectsReplica.create({
     resource: R,
     principal: who.signer.descriptor.principalId,
@@ -184,6 +206,7 @@ export async function registerResource(
   R: ResourceId,
   who: Who,
   name: string,
+  dataProfile: string,
 ): Promise<void> {
   const me = who.signer.descriptor.principalId;
   const writes = [];
@@ -198,7 +221,7 @@ export async function registerResource(
       op: "put-resource",
       row: {
         resourceId: R,
-        dataProfile: PROFILE_ID,
+        dataProfile,
         localPrincipal: {
           principalId: me,
           signingKeyRef: principalKeySecretRef(me, "signing"),
@@ -253,7 +276,7 @@ export class Session {
     readonly home: Home,
     readonly R: ResourceId,
     readonly who: Who,
-    readonly profile: SharedObjectsDataProfile,
+    readonly profile: Profile,
     readonly url: string,
     options: { reconnect: boolean },
   ) {
@@ -267,6 +290,8 @@ export class Session {
           codecFor: (u) => profile.codecFor(u),
           apply: (u, v) => profile.apply(u, v as never),
           exclude: (ids) => profile.exclude(ids),
+          has: (id) => profile.has(id),
+          reset: () => profile.reset(),
         },
       ],
     });
@@ -319,10 +344,15 @@ export class Session {
   }
 
   open(): void {
+    const profile = this.profile;
     this.client.open({
       resourceId: this.R,
       applier: this.applier,
       checkpointer: this.checkpointer,
+      // Sections write batches with receipts (SDK-SECTIONS-INTEGRATION-01 §3).
+      ...(profile instanceof SharedSectionsDataProfile
+        ? { commit: profile.commitBinding(this.who.signer.descriptor.principalId) as never }
+        : {}),
     });
   }
 

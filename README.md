@@ -9,7 +9,7 @@ demonstrations, built on the real `openlfcp/sdk-ts` packages.
 
 | Example | What it shows |
 | --- | --- |
-| [`todo-cli`](todo-cli/README.md) | `lfcp-todo`, a headless Todo client: Shared Objects Tasks as encrypted, signed LFCP Data Units, local persistence, sync and invitations against an LFCP server (LFCP-039) |
+| [`todo-cli`](todo-cli/README.md) | `lfcp-todo`, a headless Todo client: Shared Objects Tasks as encrypted, signed LFCP Data Units, local persistence, sync and invitations against an LFCP server (LFCP-039); shared sections with nested content, conflicts and their resolution, beside legacy Task lists (LFCP-02-071) |
 
 Demo: [docs/demos/headless-todo.md](docs/demos/headless-todo.md). One
 command runs a two-person storyline against the reference server, prints the
