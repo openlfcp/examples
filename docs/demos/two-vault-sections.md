@@ -17,12 +17,9 @@ the reviewer records the outcome of every check, together with any deviation
 and the artifact versions.
 
 > **Status.** This script follows the plugin's `main` branch, where shared
-> sections are a development preview (plugin 0.4, unreleased). Two checks are
-> **blocked** until the plugin catches up; they are marked in the checklist.
->
-> - **Detach a section** (C14) has no command yet.
-> - **Note-level problems on the status badge** (C17): the badge does not
->   show them yet. Only "Repair shared sections in this note" finds them.
+> sections are a development preview (plugin 0.4, unreleased). It needs the
+> plugin at `e41625c` or later: from there, "Detach this section" exists and
+> the status badge shows problems in a note.
 >
 > The headless counterpart of this run, on the same SDK and server, is the
 > two-vault qualification (`qualification/`, LFCP-02-056). The section
@@ -255,6 +252,9 @@ present.
 2. Run **Copy shared section**. The notice reads "shared section copied.
    Pasted into another note, it is another copy of the same section; it
    gives nobody access."
+3. In Vault A, paste it into a new note, `Second copy.md`. It shows the same
+   section with its badge, and edits in either copy reach the other. Step 11
+   detaches this copy.
 
 A copied section, or its `lfcp1:…#section:…` reference, is an address. Only
 an invitation gives access.
@@ -288,14 +288,27 @@ device only." Vault A never receives B's new edit.
 - Run **Repair shared sections in this note**. In a healthy note, it reads
   "Nothing in this note needs repair."
 - To see a repair, in Source mode delete the `<!-- /lfcp-section: … -->`
-  line in Vault A, then run the command again. It offers candidate lines
-  for the boundary: pick one and press **Apply**.
+  line in Vault A.
+  - The badge turns to "Needs your attention". The details card names the
+    damaged copy, for example "One copy of this section has a damaged
+    boundary or binding line."
+  - Run the repair command again. It offers candidate lines for the
+    boundary: pick one and press **Apply**. The attention clears.
 - **Restore note before section import** applies only to a section made by
   importing 0.1 Tasks. Here it reads "no section import to restore in this
   note."
-- Detaching the section from a note has no command yet (C14 is blocked).
-  Deleting the section's lines by hand removes only your copy; the shared
-  section stays.
+- To stop sharing the section in one note, use the second copy from step 8.
+  In Vault A, open `Second copy.md`, put the
+  cursor in it, and run **Detach this section**.
+  - The confirmation, `Detach "Launch plan (200 tasks)" in this note`,
+    says: "Its text stays in this note as your own and no longer updates.
+    The shared section, your other notes and your collaborators are not
+    changed."
+  - Press **Detach**. The notice reads `"Launch plan (200 tasks)" is no
+    longer shared in this note. The shared section itself is unchanged.`
+  - The markers are gone from that note, and the text stays. The section in
+    `Launch.md` and its badge are unchanged. A later edit in `Launch.md` no
+    longer reaches the detached note.
 
 ### 12. Opacity
 
@@ -330,7 +343,7 @@ which replaces the one-tick/two-tick progression of OBSIDIAN-SYNC-INDICATORS-01
 | offline | "Offline; local updates will wait" | No server; edits are kept |
 | unknown | "Server confirmation unavailable" | Sent, but acceptance cannot be confirmed |
 | attention | "Needs your attention" | A conflict, a refusal, or removed access: open the details |
-| error | "Changes are not safely saved for sync" | Not reachable yet (C17) |
+| error | "Changes are not safely saved for sync" | A local save failed; the card says "Some local changes are not safely saved for sync. Keep the note open and try again; nothing was sent for them." |
 | (none) | "Shared section · read-only" | A reader's current section |
 
 Rows inside a section are quiet when healthy. A row with waiting work or a
@@ -358,10 +371,10 @@ still works.
 | C11 | Causal resolution | One choice applied; Task once, in the chosen place, on both sides | | |
 | C12 | Readable copy | No `lfcp-` line in the pasted text | | |
 | C13 | Copy shared section | Notice says it gives nobody access | | |
-| C14 | Detach a section | A command detaches the section here, keeping the text | **blocked** | No command yet (plugin defect, owned by the plugin) |
+| C14 | Detach a section | "Detach this section" on the second copy in Vault A: the confirmation, then the notice "… is no longer shared in this note. The shared section itself is unchanged."; markers gone, text kept; `Launch.md` unchanged | | |
 | C15 | Legacy Task beside the section | 0.1 sharing works; refused inside the section | | |
 | C16 | Remove access | A: "waiting for the server"; B: "Your access to this section was removed…"; A never gets B's later edit | | |
-| C17 | Note problems on the badge | A damaged boundary sets "Needs your attention" | **blocked** | The badge does not see note-level problems yet; use Repair |
+| C17 | Note problems on the badge | A deleted end marker sets "Needs your attention"; the card names the damaged copy (record which "One copy of this section …" line it shows); Repair clears it | | |
 | C18 | Repair | A deleted end marker is offered back and applied | | |
 | C19 | Server opacity | No canary, title or text in `server/state` | | |
 | C20 | Vault isolation | No A canary in Vault B, no B canary in Vault A | | |
