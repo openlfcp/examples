@@ -1,0 +1,17 @@
+{
+  "name": "@openlfcp-examples/legacy-0.1.3",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The released @openlfcp/* 0.1.3 packages, run as a separate old client by the integrated recovery qualification (LFCP-02-070). Installed with npm ci; not a workspace package.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "dependencies": {
+    "@openlfcp/client": "0.1.3",
+    "@openlfcp/core": "0.1.3",
+    "@openlfcp/crypto": "0.1.3",
+    "@openlfcp/shared-objects": "0.1.3",
+    "@openlfcp/storage": "0.1.3",
+    "@openlfcp/storage-node": "0.1.3",
+    "@openlfcp/wire": "0.1.3"
+  }
+}
