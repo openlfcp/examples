@@ -85,6 +85,7 @@ import {
   verifyAuthProof,
   verifyKeyPackage,
 } from "@openlfcp/wire";
+import { consumeSchedules, produceSchedules } from "./schedules-ts.js";
 import { consumeSections, produceSections } from "./sections-ts.js";
 
 const FORMAT = "lfcp-interop-bundle/1";
@@ -1069,17 +1070,9 @@ async function consumeSharedObjects(
 // its section writer and consumes the other SDK's through its section
 // admission (LFCP-02-023).
 
-// The schedule runs (LFCP-02-024): not wired to the section model yet;
-// until then this adapter runs no schedules and checks none.
-
-async function produceSchedules(_dir: string): Promise<void> {}
-
-async function consumeSchedules(dir: string): Promise<void> {
-  writeFileSync(
-    join(dir, "schedules-results-ts.json"),
-    `${JSON.stringify({ consumer: "ts", checks: [] }, null, 2)}\n`,
-  );
-}
+// The schedule runs (LFCP-02-024) are schedules-ts.ts: sdk-ts runs each
+// seed with its section writer and consumes the other SDK's histories
+// through its section admission, in the Rust adapter's formats.
 
 const [command, dir] = process.argv.slice(2);
 if (command === "produce" && dir !== undefined) await produce(dir);

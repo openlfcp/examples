@@ -43,8 +43,8 @@ exchange of MVP 0.2:
   duplicates, and must derive the same effective tree, facts, diagnostics,
   collisions, refusals, held changes, retained edits and texts. The bundle
   is `sections.json` (`lfcp-interop-sections/1`); the Rust adapter is
-  `sdk-rs/crates/lfcp/examples/interop_sections.rs`. The TypeScript side is
-  a stub until its section model is complete (known-gaps.json).
+  `sdk-rs/crates/lfcp/examples/interop_sections.rs`; the TypeScript one is
+  `src/sections-ts.ts`, on sdk-ts's SectionReplica.
 - **Schedules** (LFCP-02-024). The run writes `schedules.json`
   (`lfcp-section-schedules/1`): seeds of a mulberry32 stream, each three
   authors on one section with intents (create, move, delete, restore,
@@ -52,7 +52,9 @@ exchange of MVP 0.2:
   between authors and delivery orders. The producer runs each seed with
   its SDK and writes the history and its deliveries (shuffled, with
   duplicates, causal prefixes); the consumer replays every delivery and
-  must reach the same tree, facts and refusals as in causal order. A
+  must reach the same tree, facts and refusals as in causal order. Both
+  SDKs produce and consume, so all four directions run: the TypeScript side
+  is `src/schedules-ts.ts`, the Rust side `interop_sections.rs`. A
   failing delivery is minimized (delta debugging) into a scenario under
   `report/regressions/`; kept ones go to `regressions/sections-regressions.json`
   and are replayed on every run. `--schedules N` sets the seed count

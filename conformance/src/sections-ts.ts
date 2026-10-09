@@ -17,13 +17,13 @@ import {
   type SectionUnit,
 } from "@openlfcp/shared-objects/sections";
 
-const FORMAT = "lfcp-interop-sections/1";
+export const FORMAT = "lfcp-interop-sections/1";
 
 /** A document a malicious writer edits with raw Automerge: any shape. */
 // biome-ignore lint/suspicious/noExplicitAny: raw changes write arbitrary shapes
 type RawDoc = Record<string, any>;
 
-interface Summary {
+export interface Summary {
   classification: string;
   tree: [string, string, number, string][];
   hidden: string[];
@@ -71,7 +71,7 @@ const [SECTION, T, P, X, Y, N, M] = [1, 2, 3, 4, 5, 6, 7].map(uid) as [
 ];
 
 /** JSON with object keys sorted at every level, so summaries compare whatever their writer. */
-function canonical(value: unknown): string {
+export function canonical(value: unknown): string {
   const sort = (v: unknown): unknown =>
     Array.isArray(v)
       ? v.map(sort)
@@ -86,7 +86,7 @@ function canonical(value: unknown): string {
 }
 
 /** The summary both SDKs derive: the format's fields, from the production model. */
-function summarize(
+export function summarize(
   replica: SectionReplica,
   refused: Record<string, string>,
   waiting: readonly string[],
