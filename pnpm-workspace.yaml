@@ -1,3 +1,4 @@
 packages:
   - "todo-cli"
   - "conformance"
+  - "qualification"

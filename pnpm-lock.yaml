@@ -39,6 +39,30 @@ importers:
         specifier: link:../../sdk-ts/packages/wire
         version: link:../../sdk-ts/packages/wire
 
+  qualification:
+    dependencies:
+      '@openlfcp/client':
+        specifier: link:../../sdk-ts/packages/client
+        version: link:../../sdk-ts/packages/client
+      '@openlfcp/core':
+        specifier: link:../../sdk-ts/packages/core
+        version: link:../../sdk-ts/packages/core
+      '@openlfcp/crypto':
+        specifier: link:../../sdk-ts/packages/crypto
+        version: link:../../sdk-ts/packages/crypto
+      '@openlfcp/shared-objects':
+        specifier: link:../../sdk-ts/packages/shared-objects
+        version: link:../../sdk-ts/packages/shared-objects
+      '@openlfcp/storage':
+        specifier: link:../../sdk-ts/packages/storage
+        version: link:../../sdk-ts/packages/storage
+      '@openlfcp/storage-node':
+        specifier: link:../../sdk-ts/packages/storage-node
+        version: link:../../sdk-ts/packages/storage-node
+      '@openlfcp/wire':
+        specifier: link:../../sdk-ts/packages/wire
+        version: link:../../sdk-ts/packages/wire
+
   todo-cli:
     dependencies:
       '@openlfcp/client':

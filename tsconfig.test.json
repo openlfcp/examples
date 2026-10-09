@@ -8,5 +8,5 @@
     "sourceMap": false,
     "types": ["node"]
   },
-  "include": ["todo-cli/src", "todo-cli/test", "vitest.config.ts"]
+  "include": ["todo-cli/src", "todo-cli/test", "qualification/test", "vitest.config.ts"]
 }

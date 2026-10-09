@@ -1,0 +1,20 @@
+{
+  "name": "@openlfcp-examples/qualification",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The secure two-vault qualification of shared sections (LFCP-02-056): two independent Principals, the real SDK and the Rust reference server.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@openlfcp/client": "link:../../sdk-ts/packages/client",
+    "@openlfcp/core": "link:../../sdk-ts/packages/core",
+    "@openlfcp/crypto": "link:../../sdk-ts/packages/crypto",
+    "@openlfcp/shared-objects": "link:../../sdk-ts/packages/shared-objects",
+    "@openlfcp/storage": "link:../../sdk-ts/packages/storage",
+    "@openlfcp/storage-node": "link:../../sdk-ts/packages/storage-node",
+    "@openlfcp/wire": "link:../../sdk-ts/packages/wire"
+  }
+}
