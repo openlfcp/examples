@@ -1,29 +1,4 @@
 {
   "description": "Known failures of the cross-language run, each with the bug that causes it. The run fails on any other FAIL, and on an entry here that passes (remove it then).",
-  "failures": [
-    {
-      "id": "schedules.random",
-      "producer": "rust",
-      "consumer": "ts",
-      "reason": "SSP §7.6, fix pending in sdk-ts: a node in LIFECYCLE_CONFLICT is blocked, not hidden, and edits under it are not under a deleted ancestor; sdk-ts reads Automerge's provisional value (schedule seed 2, regression seed-2-lifecycle-conflict)"
-    },
-    {
-      "id": "schedules.random",
-      "producer": "ts",
-      "consumer": "rust",
-      "reason": "SSP §7.6, fix pending in sdk-ts: a node in LIFECYCLE_CONFLICT is blocked, not hidden, and edits under it are not under a deleted ancestor; sdk-ts reads Automerge's provisional value (schedule seed 2, regression seed-2-lifecycle-conflict)"
-    },
-    {
-      "id": "schedules.regressions",
-      "producer": "rust",
-      "consumer": "ts",
-      "reason": "SSP §7.6, fix pending in sdk-ts: a node in LIFECYCLE_CONFLICT is blocked, not hidden, and edits under it are not under a deleted ancestor; sdk-ts reads Automerge's provisional value (schedule seed 2, regression seed-2-lifecycle-conflict)"
-    },
-    {
-      "id": "schedules.regressions",
-      "producer": "ts",
-      "consumer": "ts",
-      "reason": "SSP §7.6, fix pending in sdk-ts: a node in LIFECYCLE_CONFLICT is blocked, not hidden, and edits under it are not under a deleted ancestor; sdk-ts reads Automerge's provisional value (schedule seed 2, regression seed-2-lifecycle-conflict)"
-    }
-  ]
+  "failures": []
 }
