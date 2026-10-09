@@ -12,6 +12,7 @@ import {
   createInvitation,
   type StatusEvent,
   type SyncEvent,
+  type WebSocketFactory,
 } from "@openlfcp/client";
 import type { ResourceId } from "@openlfcp/core";
 import { localStateCipher, type ResourceDEK } from "@openlfcp/crypto";
@@ -79,6 +80,7 @@ export async function sectionSide(
   who: Party,
   vault: Vault,
   restore = false,
+  webSocket?: WebSocketFactory,
 ): Promise<Side<SharedSectionsDataProfile>> {
   const principal = who.signer.descriptor.principalId;
   const checkpoint = restore ? await vault.storage.profileState.checkpoint(resource) : undefined;
@@ -95,6 +97,7 @@ export async function sectionSide(
     storage: vault.storage as LfcpStorage,
     secrets: vault.secrets,
     checkpoints: true,
+    ...(webSocket === undefined ? {} : { webSocket }),
   });
 }
 
@@ -153,9 +156,12 @@ export async function twoVaults(o: {
   readonly W: number;
   readonly vaultA: Vault;
   readonly vaultB: Vault;
+  /** WebSockets for A and B (e.g. wire taps); the platform's by default. */
+  readonly wsA?: WebSocketFactory;
+  readonly wsB?: WebSocketFactory;
 }) {
   const { url, resource: R, A, B, W } = o;
-  const a = await sectionSide(url, R, A, o.vaultA);
+  const a = await sectionSide(url, R, A, o.vaultA, false, o.wsA);
   const genesis = await createResource(a, url, o.dek);
   a.start({ open: false });
   await waitFor("A READY", () => a.client.connectionState === "READY");
@@ -185,9 +191,10 @@ export async function twoVaults(o: {
     now: () => Date.now(),
     timeout: sleep(20_000),
     dataProfiles: [SECTIONS_PROFILE_ID],
+    ...(o.wsB === undefined ? {} : { webSocket: o.wsB }),
   });
   if (joined.kind !== "claimed") throw new Error(`B did not join: ${joined.kind}`);
-  const b = await sectionSide(url, R, B, o.vaultB);
+  const b = await sectionSide(url, R, B, o.vaultB, false, o.wsB);
   b.start();
   await waitFor("B LIVE", () => b.client.resourceState(R) === "LIVE", 60_000);
   await waitFor(
