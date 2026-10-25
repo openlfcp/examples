@@ -15,18 +15,18 @@ jobs:
       run:
         working-directory: examples
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: examples
       # The examples consume the sdk-ts packages from ../sdk-ts (link:).
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: openlfcp/sdk-ts
           path: sdk-ts
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: examples/package.json
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - run: pnpm install --frozen-lockfile && pnpm build
@@ -45,7 +45,7 @@ jobs:
   conformance:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: examples
       - id: pins
@@ -53,12 +53,12 @@ jobs:
         run: |
           echo "sdk_rs=$(jq -er .sdk_rs conformance/pins.json)" >> "$GITHUB_OUTPUT"
           echo "sdk_ts=$(jq -er .sdk_ts conformance/pins.json)" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: openlfcp/sdk-ts
           ref: ${{ steps.pins.outputs.sdk_ts }}
           path: sdk-ts
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: openlfcp/sdk-rs
           ref: ${{ steps.pins.outputs.sdk_rs }}
@@ -67,16 +67,16 @@ jobs:
         run: echo "tag=$(jq -er .tag sdk-rs/spec.lock)" >> "$GITHUB_OUTPUT"
       # Full history with tags: the SDK tests check the tag still resolves
       # to the pinned commit.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: openlfcp/spec
           ref: refs/tags/${{ steps.spec.outputs.tag }}
           path: spec
           fetch-depth: 0
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: examples/package.json
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - uses: dtolnay/rust-toolchain@stable
@@ -87,7 +87,7 @@ jobs:
         working-directory: examples
       - run: node conformance/dist/run.js --strict
         working-directory: examples
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: compatibility-report
